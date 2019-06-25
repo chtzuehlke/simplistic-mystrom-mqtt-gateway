@@ -27,18 +27,10 @@ values to an AWS IoT MQTT topic.
     go build
     ```
 
-5. Detect or configure mystrom switch IPs
-
-macOS (requires nmap, ruby, curl, ifconfig):
+5. macOS/experimental: detect mystrom switch IPs (requires nmap, ruby, curl, ifconfig):
 
     ```
     SWITCH_IPS=$(./macos-experimental-mystrom-switch-detection.sh)
-    ```
-
-Manual:
-
-    ```
-    export SWITCH_IPS=192.168.178.38,192.168.178.40
     ```
 
 6. Run the gatweay
