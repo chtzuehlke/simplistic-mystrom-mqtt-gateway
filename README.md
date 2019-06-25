@@ -1,12 +1,17 @@
 # simplistic-mystrom-mqtt-gateway
 
+This is a non-production-ready PoC to peridoically gather power information from mystrom switches and to publish the 
+values to an AWS IoT MQTT topic.
+
 ## Steps
 
-0. install golang
+1. To compile the gateway: install golang
 
-1. create thing, cert & policy in AWS IoT and download certificate and private key
+2. To conveniently detect mystrom devices (see simplistic-mystrom-mqtt-gateway.sh): install nmap and ruby and ensure ifconfig and curl are available (tested with macOS)
 
-2. create config file (conf.json)
+3. Required AWS IoT Core setup: create a thing with a certificate and an appropriate policy to publish MQTT messages. Also download the generated certificate and the private key. Figure out your AWS IoT endpoint.
+
+4. Create a configuration file (conf.json)
 
     ```
     {
@@ -18,18 +23,16 @@
     }
     ```
 
-3. build
+5. Build the gateway
 
     ```
     go build
     ```
 
-4. run (you might want to create test subscription to "go-mqtt/sample" in the AWS IoT web console)
+6. Run the gatweay
 
     ```
-    ./simplistic-mystrom-mqtt-gateway -conf conf.json -client-id testclient -mystrom-switch-url https://httpecho-167219.appspot.com/mystrom/switch/sampleresponse1.json
+    ./simplistic-mystrom-mqtt-gateway.sh
     ```
 
-## Sources partially "borrowed" from here
-
-- https://github.com/chtzuehlke/helloworld-go-mqtt-awsiot
+6. Subscribe to topic "mystrom/power/testclient" in the MQTT client in the AWS IoT web console to see the messages produced by the gateway
