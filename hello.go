@@ -4,9 +4,11 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"strings"
 	"time"
 
 	MQTT "github.com/eclipse/paho.mqtt.golang"
@@ -104,8 +106,9 @@ func getCertPool(pemPath string) (*x509.CertPool, error) {
 
 // ArgOption holds command line arguments
 type ArgOption struct {
-	Conf     string
-	ClientID string
+	Conf            string
+	ClientID        string
+	MyStomSwitchURL string
 }
 
 // NewOption creates new AWS IoT options (from a configuration file)
@@ -123,19 +126,6 @@ func NewOption(args *ArgOption) (*MQTT.ClientOptions, error) {
 	return opts, nil
 }
 
-//define a function for the default message handler
-var f MQTT.MessageHandler = func(client MQTT.Client, msg MQTT.Message) {
-	fmt.Printf("TOPIC: %s\n", msg.Topic())
-	fmt.Printf("MSG: %s\n", msg.Payload())
-}
-
-var args ArgOption
-
-///
-
-//curl -H "Content-Type: text/json" -d '{"power":120,"relay":"FIXME","temperature":"FIXME"}' https://httpecho-167219.appspot.com/register/get/200/mystrom/switch/sampleresponse1.json
-//curl -v https://httpecho-167219.appspot.com/mystrom/switch/sampleresponse1.json | jq
-
 // MyStromgSwitchResponse holds mystrom switch status response (see https://api.mystrom.ch/?version=latest)
 type MyStromgSwitchResponse struct {
 	Power       int    `json:"power"`
@@ -143,36 +133,30 @@ type MyStromgSwitchResponse struct {
 	Temperature string `json:"temperature"`
 }
 
-///
-
-func main() {
-
-	///
-
-	resp, err := resty.R().Get("https://httpecho-167219.appspot.com/mystrom/switch/sampleresponse1.json")
-	if err != nil || resp.StatusCode() != 200 {
-		panic(err)
+func getCurrentMyStromSwitchPower(url string) (int, error) {
+	resp, err := resty.R().Get(url)
+	if err != nil {
+		return -1, err
 	}
-
-	// explore response object
-	//fmt.Printf("\nError: %v", err)
-	//fmt.Printf("\nResponse Status Code: %v", resp.StatusCode())
-	//fmt.Printf("\nResponse Status: %v", resp.Status())
-	//fmt.Printf("\nResponse Time: %v", resp.Time())
-	//fmt.Printf("\nResponse Received At: %v", resp.ReceivedAt())
-	//fmt.Printf("\nResponse Body: %v", resp) // or resp.String() or string(resp.Body())
+	if resp.StatusCode() != 200 {
+		return -1, errors.New("unexpected non-200 mystrom switch response code")
+	}
 
 	var myResp = MyStromgSwitchResponse{}
 	var parseErr = json.Unmarshal(resp.Body(), &myResp)
 	if parseErr != nil {
-		panic(err)
+		return -1, err
 	}
-	fmt.Printf("\nResponse Body power: %v\n", myResp.Power)
 
-	///
+	return myResp.Power, nil
+}
 
+var args ArgOption
+
+func main() {
 	flag.StringVar(&args.Conf, "conf", "", "Config file JSON path and name for accessing to AWS IoT endpoint")
 	flag.StringVar(&args.ClientID, "client-id", "", "client id to connect with")
+	flag.StringVar(&args.MyStomSwitchURL, "mystrom-switch-url", "", "mystrom switch URL")
 	flag.Parse()
 
 	opts, err := NewOption(&args)
@@ -180,34 +164,36 @@ func main() {
 		panic(err)
 	}
 
-	opts.SetDefaultPublishHandler(f)
-
 	//create and start a client using the above ClientOptions
 	c := MQTT.NewClient(opts)
 	if token := c.Connect(); token.Wait() && token.Error() != nil {
 		panic(token.Error())
 	}
 
-	//subscribe to the topic /go-mqtt/sample and request messages to be delivered
-	//at a maximum qos of zero, wait for the receipt to confirm the subscription
-	if token := c.Subscribe("go-mqtt/sample", 0, nil); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
+	//send power every minute (for ever)
+	for {
 
-	//Publish 5 messages to /go-mqtt/sample at qos 1 and wait for the receipt
-	//from the server after sending each message
-	for i := 0; i < 5; i++ {
-		text := fmt.Sprintf("this is msg #%d!", i)
-		token := c.Publish("go-mqtt/sample", 0, false, text)
-		token.Wait()
-	}
+		var urls = strings.Split(args.MyStomSwitchURL, ",")
+		for _, url := range urls {
+			var power, err = getCurrentMyStromSwitchPower(url)
+			if err != nil {
+				panic(err) //FIXME
+			}
 
-	time.Sleep(3 * time.Second)
+			text := fmt.Sprintf("{\"url\":\"%s\",\"power\":\"%d\"}", url, power) //FIXME url
+			token := c.Publish("go-mqtt/sample", 0, false, text)
+			token.Wait()
+
+			fmt.Println("sent")
+		}
+
+		time.Sleep(60 * time.Second)
+	}
 
 	//unsubscribe from /go-mqtt/sample
-	if token := c.Unsubscribe("go-mqtt/sample"); token.Wait() && token.Error() != nil {
-		panic(token.Error())
-	}
-
-	c.Disconnect(250)
+	//if token := c.Unsubscribe("go-mqtt/sample"); token.Wait() && token.Error() != nil {
+	//	panic(token.Error())
+	//}
+	//
+	//c.Disconnect(250)
 }

@@ -1,4 +1,4 @@
-# helloworld-go-mqtt-awsiot
+# simplistic-mystrom-mqtt-gateway
 
 ## Steps
 
@@ -27,12 +27,9 @@
 4. run (you might want to create test subscription to "go-mqtt/sample" in the AWS IoT web console)
 
     ```
-    ./helloworld-go-mqtt-awsiot -conf conf.json -client-id testclient
+    ./simplistic-mystrom-mqtt-gateway -conf conf.json -client-id testclient -mystrom-switch-url https://httpecho-167219.appspot.com/mystrom/switch/sampleresponse1.json
     ```
 
 ## Sources partially "borrowed" from here
 
-- https://www.eclipse.org/paho/clients/golang/
-- https://github.com/manamanmana/aws-mqtt-chat-example/
-- https://github.com/golang/go/wiki/Modules
-- https://github.com/go-resty/resty
+- https://github.com/chtzuehlke/helloworld-go-mqtt-awsiot
