@@ -7,11 +7,9 @@ values to an AWS IoT MQTT topic.
 
 1. To compile the gateway: install golang
 
-2. To conveniently detect mystrom devices (see simplistic-mystrom-mqtt-gateway.sh): install nmap and ruby and ensure ifconfig and curl are available (tested with macOS)
+2. Required AWS IoT Core setup: create a thing with a certificate and an appropriate policy to publish MQTT messages. Also download the generated certificate and the private key. Figure out your AWS IoT endpoint.
 
-3. Required AWS IoT Core setup: create a thing with a certificate and an appropriate policy to publish MQTT messages. Also download the generated certificate and the private key. Figure out your AWS IoT endpoint.
-
-4. Create a configuration file (conf.json)
+3. Create a configuration file (conf.json)
 
     ```
     {
@@ -23,16 +21,30 @@ values to an AWS IoT MQTT topic.
     }
     ```
 
-5. Build the gateway
+4. Build the gateway
 
     ```
     go build
     ```
 
+5. Detect or configure mystrom switch IPs
+
+macOS (requires nmap, ruby, curl, ifconfig):
+
+    ```
+    SWITCH_IPS=$(./macos-experimental-mystrom-switch-detection.sh)
+    ```
+
+Manual:
+
+    ```
+    export SWITCH_IPS=192.168.178.38,192.168.178.40
+    ```
+
 6. Run the gatweay
 
     ```
-    ./simplistic-mystrom-mqtt-gateway.sh
+    ./simplistic-mystrom-mqtt-gateway.sh $SWITCH_IPS
     ```
 
-6. Subscribe to topic "mystrom/power/testclient" in the MQTT client in the AWS IoT web console to see the messages produced by the gateway
+7. Subscribe to topic "mystrom/power/testclient" in the MQTT client in the AWS IoT web console to see the messages produced by the gateway
